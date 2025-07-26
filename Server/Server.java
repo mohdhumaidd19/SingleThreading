@@ -1,34 +1,46 @@
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.net.UnknownHostException;
+import java.io.*;
+import java.net.*;
 
 public class Server {
+    public static void main(String[] args) throws IOException {
+        ServerSocket serverSocket = new ServerSocket(1234); // Port number
+        System.out.println("Server started on port 1234...");
 
-    public void run() throws IOException, UnknownHostException{
-        int port = 8010;
-        ServerSocket socket = new ServerSocket(port);
-        socket.setSoTimeout(20000);
-        while(true){
-            System.out.println("Server is listening on port: "+port);
-            Socket acceptedConnection = socket.accept();
-            System.out.println("Connected to "+acceptedConnection.getRemoteSocketAddress());
-            PrintWriter toClient = new PrintWriter(acceptedConnection.getOutputStream(), true);
-            BufferedReader fromClient = new BufferedReader(new InputStreamReader(acceptedConnection.getInputStream()));
-            toClient.println("Hello World from the server");
+        while (true) {
+            Socket clientSocket = serverSocket.accept(); // Accept new client
+            System.out.println("New client connected");
+
+            // Create a new thread for each client
+            ClientHandler handler = new ClientHandler(clientSocket);
+            new Thread(handler).start();
         }
     }
+}
 
-    public static void main(String[] args){
-        Server server = new Server();
-        try{
-            server.run();
-        }catch(Exception ex){
-            ex.printStackTrace();
-        }
+class ClientHandler implements Runnable {
+    private Socket clientSocket;
+
+    public ClientHandler(Socket socket) {
+        this.clientSocket = socket;
     }
 
+    public void run() {
+        try {
+            // Get input and output streams
+            BufferedReader in = new BufferedReader(
+                    new InputStreamReader(clientSocket.getInputStream()));
+            PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
+
+            String message;
+            // Echo loop
+            while ((message = in.readLine()) != null) {
+                System.out.println("Received from client: " + message);
+                out.println("Echo: " + message); // Send back
+            }
+
+            clientSocket.close();
+        } catch (IOException e) {
+            System.out.println("Error in client communication: " + e.getMessage());
+        }
+    }
 }
